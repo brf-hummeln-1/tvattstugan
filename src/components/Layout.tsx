@@ -1,39 +1,40 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { useAuth } from '../lib/auth'
+import { CalendarIcon, ChatIcon, InfoIcon, MoreIcon, WasherIcon } from './icons'
 
 const tabs = [
-  { to: '/', label: 'Boka', icon: '📅' },
-  { to: '/min-bokning', label: 'Min tid', icon: '🧺' },
-  { to: '/chatt', label: 'Chatt', icon: '💬' },
-  { to: '/info', label: 'Info', icon: 'ℹ️' },
-  { to: '/mer', label: 'Mer', icon: '⚙️' },
+  { to: '/', label: 'Boka', Icon: CalendarIcon },
+  { to: '/min-bokning', label: 'Min tid', Icon: WasherIcon },
+  { to: '/chatt', label: 'Chatt', Icon: ChatIcon },
+  { to: '/info', label: 'Info', Icon: InfoIcon },
+  { to: '/mer', label: 'Mer', Icon: MoreIcon },
 ]
 
 export function Layout() {
-  const { resident } = useAuth()
   return (
     <div className="flex h-full flex-col">
-      <main className="flex-1 overflow-y-auto px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
+      <main className="flex-1 overflow-y-auto px-4 pb-32 pt-[max(1rem,env(safe-area-inset-top))]">
         <Outlet />
       </main>
-      <nav className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]">
-        <ul className="flex">
-          {tabs.map((tab) => (
-            <li key={tab.to} className="flex-1">
+      {/* Flytande glasflikrad */}
+      <nav className="pointer-events-none fixed inset-x-0 bottom-0 flex justify-center px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <ul className="glass pointer-events-auto flex w-full max-w-md rounded-full px-1 py-1">
+          {tabs.map(({ to, label, Icon }) => (
+            <li key={to} className="flex-1">
               <NavLink
-                to={tab.to}
-                end={tab.to === '/'}
+                to={to}
+                end={to === '/'}
                 className={({ isActive }) =>
-                  `flex min-h-16 flex-col items-center justify-center gap-0.5 text-sm font-medium ${
-                    isActive ? 'text-sky-700' : 'text-slate-500'
+                  `pressable flex min-h-[54px] flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium ${
+                    isActive ? 'text-ios-tint' : 'text-ios-label-2'
                   }`
                 }
               >
-                <span className="text-2xl leading-none" aria-hidden>
-                  {tab.icon}
-                </span>
-                {tab.label}
-                {tab.to === '/mer' && resident?.is_admin && <span className="sr-only"> (admin)</span>}
+                {({ isActive }) => (
+                  <>
+                    <Icon filled={isActive} className={isActive ? 'h-7 w-7' : 'h-7 w-7'} />
+                    {label}
+                  </>
+                )}
               </NavLink>
             </li>
           ))}

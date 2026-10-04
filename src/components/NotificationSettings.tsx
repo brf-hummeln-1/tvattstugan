@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { isIos, isStandalone } from '../lib/device'
 import { disablePush, enablePush, getPushState, type PushState } from '../lib/push'
-import { Button, ErrorText } from './ui'
+import { Button, ErrorText, Switch } from './ui'
 import { InstallGuide } from './InstallGuide'
 
 type Settings = { reminders: boolean; chat: boolean }
@@ -31,7 +31,6 @@ export function NotificationSettings({ compact = false }: { compact?: boolean })
       .maybeSingle()
       .then(async ({ data }) => {
         if (data) return setSettings(data as Settings)
-        // Rad saknas (äldre konto): skapa standardinställningar.
         const { data: created } = await supabase
           .from('notification_settings')
           .insert({ resident_id: resident.id })
@@ -52,28 +51,14 @@ export function NotificationSettings({ compact = false }: { compact?: boolean })
     }
   }
 
-  async function turnOn() {
-    if (!resident) return
+  async function run(fn: () => Promise<void>) {
     setBusy(true)
     setError(null)
     try {
-      await enablePush(resident.id)
+      await fn()
       await refresh()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunde inte slå på notiser')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function turnOff() {
-    setBusy(true)
-    setError(null)
-    try {
-      await disablePush()
-      await refresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Kunde inte stänga av notiser')
+      setError(e instanceof Error ? e.message : 'Något gick fel')
     } finally {
       setBusy(false)
     }
@@ -82,11 +67,9 @@ export function NotificationSettings({ compact = false }: { compact?: boolean })
   return (
     <div className="space-y-3">
       {needsHomeScreen ? (
-        <div className="rounded-xl bg-amber-50 p-3 text-amber-900">
-          <p className="mb-2">
-            På iPhone fungerar notiser bara när appen är tillagd på hemskärmen och öppnas därifrån.
-          </p>
-          <button type="button" className="font-semibold underline" onClick={() => setShowGuide((v) => !v)}>
+        <div className="rounded-ios-sm bg-ios-orange-soft px-4 py-3 text-[15px] text-ios-label">
+          <p className="mb-1">På iPhone fungerar notiser bara när appen är tillagd på hemskärmen och öppnas därifrån.</p>
+          <button type="button" className="font-semibold text-ios-tint" onClick={() => setShowGuide((v) => !v)}>
             {showGuide ? 'Dölj guiden' : 'Visa hur man gör'}
           </button>
           {showGuide && (
@@ -96,47 +79,48 @@ export function NotificationSettings({ compact = false }: { compact?: boolean })
           )}
         </div>
       ) : pushState === 'loading' ? null : pushState === 'unsupported' ? (
-        <p className="text-slate-600">Den här webbläsaren stöder inte notiser. Du får påminnelser via mejl istället.</p>
+        <p className="text-[15px] text-ios-label-2">
+          Den här webbläsaren stöder inte notiser. Du får påminnelser via mejl istället.
+        </p>
       ) : pushState === 'denied' ? (
-        <p className="rounded-xl bg-amber-50 p-3 text-amber-900">
+        <p className="rounded-ios-sm bg-ios-orange-soft px-4 py-3 text-[15px] text-ios-label">
           Notiser är blockerade för Tvättstugan i telefonens inställningar. Tillåt dem där och försök igen. Tills dess
           får du påminnelser via mejl.
         </p>
       ) : pushState === 'subscribed' ? (
         <>
-          <p className="rounded-xl bg-green-50 p-3 text-green-800">Notiser är på för den här enheten.</p>
+          <p className="rounded-ios-sm bg-ios-green-soft px-4 py-3 text-[15px] font-medium text-ios-green">
+            Notiser är på för den här enheten
+          </p>
           {!compact && (
-            <Button variant="secondary" onClick={turnOff} disabled={busy}>
-              Stäng av notiser på den här enheten
+            <Button variant="secondary" onClick={() => run(disablePush)} disabled={busy}>
+              Stäng av på den här enheten
             </Button>
           )}
         </>
       ) : (
-        <Button onClick={turnOn} disabled={busy}>
+        <Button onClick={() => run(() => enablePush(resident!.id))} disabled={busy || !resident}>
           {busy ? 'Slår på…' : 'Slå på notiser'}
         </Button>
       )}
 
       {!compact && settings && (
-        <div className="space-y-2 pt-1">
-          <Toggle label="Påminnelse en timme innan bokad tid" checked={settings.reminders} onChange={() => toggle('reminders')} />
-          <Toggle label="Nya meddelanden i chatten" checked={settings.chat} onChange={() => toggle('chat')} />
-          <p className="text-sm text-slate-500">
-            Om en bokad tid avbokas på grund av en spärr får du alltid besked. Saknar du notiser skickas påminnelser
-            och avbokningar som mejl.
+        <div className="hairline -mx-4 mt-1">
+          <label className="flex min-h-[52px] items-center justify-between gap-3 px-4 text-[17px]">
+            <span>Påminnelse en timme innan</span>
+            <Switch checked={settings.reminders} onChange={() => toggle('reminders')} label="Påminnelse" />
+          </label>
+          <label className="flex min-h-[52px] items-center justify-between gap-3 px-4 text-[17px]">
+            <span>Nya meddelanden i chatten</span>
+            <Switch checked={settings.chat} onChange={() => toggle('chat')} label="Chatt" />
+          </label>
+          <p className="px-4 pt-3 text-[13px] text-ios-label-2">
+            Om en bokad tid avbokas på grund av en spärr får du alltid besked. Saknar du notiser skickas påminnelser och
+            avbokningar som mejl.
           </p>
         </div>
       )}
       <ErrorText>{error}</ErrorText>
     </div>
-  )
-}
-
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
-  return (
-    <label className="flex min-h-12 items-center justify-between gap-3 text-lg">
-      <span>{label}</span>
-      <input type="checkbox" className="h-7 w-7" checked={checked} onChange={onChange} />
-    </label>
   )
 }

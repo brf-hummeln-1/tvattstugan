@@ -1,10 +1,209 @@
 @import "tailwindcss";
 
+/* iOS-systemfärger. Ljust läge som standard, mörkt via prefers-color-scheme. */
+:root {
+  --ios-bg: #f2f2f7;            /* systemGroupedBackground */
+  --ios-card: #ffffff;          /* secondarySystemGroupedBackground */
+  --ios-fill: rgba(120, 120, 128, 0.12); /* tertiarySystemFill */
+  --ios-fill-strong: rgba(120, 120, 128, 0.2);
+  --ios-separator: rgba(60, 60, 67, 0.29);
+  --ios-label: #000000;
+  --ios-label-2: rgba(60, 60, 67, 0.6);
+  --ios-label-3: rgba(60, 60, 67, 0.3);
+  --ios-tint: #007aff;
+  --ios-tint-soft: rgba(0, 122, 255, 0.12);
+  --ios-green: #34c759;
+  --ios-green-soft: rgba(52, 199, 89, 0.14);
+  --ios-red: #ff3b30;
+  --ios-red-soft: rgba(255, 59, 48, 0.12);
+  --ios-orange: #ff9500;
+  --ios-orange-soft: rgba(255, 149, 0, 0.14);
+  --ios-bubble: #e9e9eb;
+  --ios-glass: rgba(249, 249, 249, 0.72);
+  --ios-glass-border: rgba(255, 255, 255, 0.6);
+  --ios-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ios-bg: #000000;
+    --ios-card: #1c1c1e;
+    --ios-fill: rgba(118, 118, 128, 0.24);
+    --ios-fill-strong: rgba(118, 118, 128, 0.36);
+    --ios-separator: rgba(84, 84, 88, 0.6);
+    --ios-label: #ffffff;
+    --ios-label-2: rgba(235, 235, 245, 0.6);
+    --ios-label-3: rgba(235, 235, 245, 0.3);
+    --ios-tint: #0a84ff;
+    --ios-tint-soft: rgba(10, 132, 255, 0.2);
+    --ios-green: #30d158;
+    --ios-green-soft: rgba(48, 209, 88, 0.18);
+    --ios-red: #ff453a;
+    --ios-red-soft: rgba(255, 69, 58, 0.18);
+    --ios-orange: #ff9f0a;
+    --ios-orange-soft: rgba(255, 159, 10, 0.18);
+    --ios-bubble: #26252a;
+    --ios-glass: rgba(28, 28, 30, 0.72);
+    --ios-glass-border: rgba(255, 255, 255, 0.12);
+    --ios-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --color-ios-bg: var(--ios-bg);
+  --color-ios-card: var(--ios-card);
+  --color-ios-fill: var(--ios-fill);
+  --color-ios-fill-strong: var(--ios-fill-strong);
+  --color-ios-separator: var(--ios-separator);
+  --color-ios-label: var(--ios-label);
+  --color-ios-label-2: var(--ios-label-2);
+  --color-ios-label-3: var(--ios-label-3);
+  --color-ios-tint: var(--ios-tint);
+  --color-ios-tint-soft: var(--ios-tint-soft);
+  --color-ios-green: var(--ios-green);
+  --color-ios-green-soft: var(--ios-green-soft);
+  --color-ios-red: var(--ios-red);
+  --color-ios-red-soft: var(--ios-red-soft);
+  --color-ios-orange: var(--ios-orange);
+  --color-ios-orange-soft: var(--ios-orange-soft);
+  --color-ios-bubble: var(--ios-bubble);
+  --radius-ios: 20px;
+  --radius-ios-sm: 14px;
+}
+
 html, body, #root {
   height: 100%;
 }
 
 body {
+  background: var(--ios-bg);
+  color: var(--ios-label);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
+  font-size: 17px;
+  line-height: 1.35;
 }
+
+/* Tryckåterkoppling direkt vid nedtryck, inte vid släpp. */
+.pressable {
+  transition: transform 120ms ease-out, opacity 120ms ease-out, background-color 120ms ease-out;
+}
+.pressable:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+.pressable-row:active {
+  background-color: var(--ios-fill);
+}
+
+/* Glasmaterial för flikrad och paneler. */
+.glass {
+  background: var(--ios-glass);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--ios-glass-border);
+  box-shadow: var(--ios-shadow);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--ios-card);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Hårlinje-avdelare mellan rader i grupperade listor. */
+.hairline > * + * {
+  position: relative;
+}
+.hairline > * + *::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 0;
+  top: 0;
+  height: 1px;
+  transform: scaleY(0.5);
+  background: var(--ios-separator);
+}
+
+/* Bottenpanel: glider upp med iOS-kurva, tonar bara vid reducerad rörelse. */
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.sheet-enter {
+  animation: sheet-up 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.scrim-enter {
+  animation: fade-in 250ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-enter {
+    animation: fade-in 200ms ease-out;
+  }
+  .pressable:active {
+    transform: none;
+  }
+}
+
+/* iOS-brytare */
+.ios-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  background: var(--ios-fill-strong);
+  position: relative;
+  flex: none;
+  transition: background-color 200ms ease;
+  cursor: pointer;
+}
+.ios-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+  transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.ios-switch:checked {
+  background: var(--ios-green);
+}
+.ios-switch:checked::after {
+  transform: translateX(20px);
+}
+
+/* Native datumfält ska se ut som övriga fält. */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 48px;
+}
+
+/* Markdown på info-sidan */
+.prose-ios h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 8px; }
+.prose-ios h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 16px 0 6px; }
+.prose-ios h3 { font-size: 17px; font-weight: 600; margin: 14px 0 4px; }
+.prose-ios p { margin: 0 0 10px; color: var(--ios-label); }
+.prose-ios ul, .prose-ios ol { margin: 0 0 10px; padding-left: 22px; }
+.prose-ios li { margin: 0 0 6px; }
+.prose-ios ul li { list-style: disc; }
+.prose-ios ol li { list-style: decimal; }
+.prose-ios a { color: var(--ios-tint); }
+.prose-ios strong { font-weight: 600; }

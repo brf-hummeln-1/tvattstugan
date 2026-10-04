@@ -4,7 +4,7 @@ import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { formatDateTime } from '../lib/time'
-import { Button, Card, ErrorText, PageTitle, Spinner } from '../components/ui'
+import { Button, Card, ErrorText, PageTitle, SectionFooter, Spinner } from '../components/ui'
 
 type InfoPage = { content: string; updated_at: string }
 
@@ -53,7 +53,24 @@ export function Info() {
 
   return (
     <div className="mx-auto max-w-md">
-      <PageTitle>Info</PageTitle>
+      <PageTitle
+        action={
+          resident?.is_admin && page && !editing ? (
+            <button
+              type="button"
+              className="pressable mb-1 text-[17px] text-ios-tint"
+              onClick={() => {
+                setDraft(page.content)
+                setEditing(true)
+              }}
+            >
+              Redigera
+            </button>
+          ) : undefined
+        }
+      >
+        Info
+      </PageTitle>
       <ErrorText>{error}</ErrorText>
       {!page ? (
         <Spinner />
@@ -63,11 +80,9 @@ export function Info() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             rows={18}
-            className="w-full rounded-xl border border-slate-300 bg-white p-3 font-mono text-base outline-none focus:border-sky-600"
+            className="w-full rounded-ios bg-ios-card p-4 font-mono text-[15px] outline-none focus:ring-2 focus:ring-ios-tint/60"
           />
-          <p className="text-sm text-slate-500">
-            Formatering: rad som börjar med # blir rubrik, rader med - blir punktlista, **fet** text.
-          </p>
+          <SectionFooter>Rad som börjar med # blir rubrik, rader med - blir punktlista, **fet** text.</SectionFooter>
           <Button onClick={save} disabled={busy}>
             {busy ? 'Sparar…' : 'Spara'}
           </Button>
@@ -76,26 +91,12 @@ export function Info() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <>
           <Card>
-            <div
-              className="prose-sm space-y-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:text-xl [&_h2]:font-bold [&_h3]:text-lg [&_h3]:font-semibold [&_li]:ml-5 [&_li]:list-disc [&_p]:text-slate-700 [&_a]:text-sky-700 [&_a]:underline"
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
+            <div className="prose-ios" dangerouslySetInnerHTML={{ __html: html }} />
           </Card>
-          <p className="text-sm text-slate-500">Uppdaterad {formatDateTime(page.updated_at)}</p>
-          {resident?.is_admin && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setDraft(page.content)
-                setEditing(true)
-              }}
-            >
-              Redigera (admin)
-            </Button>
-          )}
-        </div>
+          <SectionFooter>Uppdaterad {formatDateTime(page.updated_at)}</SectionFooter>
+        </>
       )}
     </div>
   )

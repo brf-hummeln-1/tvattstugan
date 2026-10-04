@@ -37,23 +37,17 @@ export function Login() {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: code.trim(),
-      type: 'email',
-    })
+    const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: 'email' })
     setBusy(false)
-    if (error) {
-      setError('Fel eller utgången kod. Kontrollera koden eller begär en ny.')
-    }
+    if (error) setError('Fel eller utgången kod. Kontrollera koden eller begär en ny.')
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-10">
+    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))]">
       <div className="mb-8 text-center">
-        <img src="icons/icon-192.png" alt="" className="mx-auto mb-4 h-20 w-20 rounded-2xl" />
-        <h1 className="text-3xl font-bold">Tvättstugan</h1>
-        <p className="mt-1 text-slate-600">Logga in med din mejladress</p>
+        <img src="icons/icon-192.png" alt="" className="mx-auto mb-4 h-24 w-24 rounded-[22px] shadow-lg" />
+        <h1 className="text-[34px] font-bold tracking-[-0.02em]">Tvättstugan</h1>
+        <p className="mt-1 text-[17px] text-ios-label-2">Logga in med din mejladress</p>
       </div>
 
       {step === 'email' ? (
@@ -70,6 +64,7 @@ export function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="namn@exempel.se"
+              className="bg-ios-card shadow-sm"
             />
           </div>
           <ErrorText>{error}</ErrorText>
@@ -79,8 +74,8 @@ export function Login() {
         </form>
       ) : (
         <form onSubmit={verifyCode} className="space-y-4">
-          <p className="text-slate-700">
-            Vi har skickat en sexsiffrig kod till <strong>{email}</strong>. Skriv in den här.
+          <p className="text-center text-[15px] text-ios-label-2">
+            Vi har skickat en sexsiffrig kod till <strong className="text-ios-label">{email}</strong>.
           </p>
           <div>
             <Label htmlFor="code">Kod</Label>
@@ -94,7 +89,7 @@ export function Login() {
               required
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              className="text-center text-3xl tracking-[0.5em]"
+              className="bg-ios-card text-center text-[32px] font-semibold tracking-[0.4em] shadow-sm"
             />
           </div>
           <ErrorText>{error}</ErrorText>

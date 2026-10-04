@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { adminApi } from '../lib/admin'
 import type { Apartment, ResidentWithApartment } from '../lib/types'
-import { Button, Card, ErrorText, Input, Label, PageTitle, Select, Spinner } from '../components/ui'
+import { Button, Card, ErrorText, Input, Label, ListGroup, ListRow, PageTitle, Pill, SectionFooter, Segmented, Select, Spinner, Switch } from '../components/ui'
+import { ChevronLeft } from '../components/icons'
+import { Sheet } from '../components/Sheet'
 import { AdminBlocks } from './AdminBlocks'
 import { AdminBookFor } from './AdminBookFor'
 
@@ -17,14 +19,16 @@ type ResidentForm = {
 }
 
 const emptyForm: ResidentForm = { name: '', email: '', phone: '', apartment_id: '', is_admin: false }
+type Tab = 'residents' | 'apartments' | 'blocks' | 'bookfor'
 
 export function Admin() {
   const { resident: me, refreshResident } = useAuth()
+  const navigate = useNavigate()
   const [apartments, setApartments] = useState<Apartment[]>([])
   const [residents, setResidents] = useState<ResidentWithApartment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'residents' | 'apartments' | 'blocks' | 'bookfor'>('residents')
+  const [tab, setTab] = useState<Tab>('residents')
 
   const load = useCallback(async () => {
     const [a, r] = await Promise.all([
@@ -55,31 +59,22 @@ export function Admin() {
 
   return (
     <div className="mx-auto max-w-md">
-      <Link to="/mer" className="mb-2 inline-block text-sky-700">
-        ‹ Tillbaka
-      </Link>
+      <button type="button" onClick={() => navigate('/mer')} className="pressable -ml-2 mb-1 flex items-center text-[17px] text-ios-tint">
+        <ChevronLeft /> Mer
+      </button>
       <PageTitle>Admin</PageTitle>
 
-      <div className="mb-4 flex rounded-xl bg-slate-200 p-1">
-        {(
-          [
-            ['residents', 'Boende'],
-            ['apartments', 'Lgh'],
-            ['blocks', 'Spärrar'],
-            ['bookfor', 'Boka åt'],
-          ] as const
-        ).map(([t, label]) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`min-h-12 flex-1 rounded-lg text-sm font-semibold ${
-              tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="mb-4">
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'residents', label: 'Boende' },
+            { value: 'apartments', label: 'Lgh' },
+            { value: 'blocks', label: 'Spärrar' },
+            { value: 'bookfor', label: 'Boka åt' },
+          ]}
+        />
       </div>
 
       <ErrorText>{error}</ErrorText>
@@ -121,7 +116,9 @@ function ResidentsAdmin({
 
   return (
     <div className="space-y-3">
-      <Button onClick={() => setEditing('new')}>+ Lägg till boende</Button>
+      <Button variant="tinted" onClick={() => setEditing('new')}>
+        + Lägg till boende
+      </Button>
 
       {editing && (
         <ResidentEditor
@@ -136,31 +133,31 @@ function ResidentsAdmin({
         />
       )}
 
-      {residents.length === 0 && <p className="text-slate-600">Inga boende tillagda ännu.</p>}
-      {residents.map((r) => (
-        <Card key={r.id}>
-          <button type="button" className="w-full text-left" onClick={() => setEditing(r)}>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-lg font-semibold">
-                  {r.name}
-                  {r.is_admin && (
-                    <span className="ml-2 rounded-md bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800">
-                      Admin
-                    </span>
-                  )}
-                </p>
-                <p className="text-slate-600">
-                  {r.apartment ? `Lägenhet ${r.apartment.label}` : 'Ingen lägenhet'}
-                </p>
-                <p className="text-sm text-slate-500">{r.email}</p>
-                {r.phone && <p className="text-sm text-slate-500">{r.phone}</p>}
-              </div>
-              <span className="text-slate-400">›</span>
-            </div>
-          </button>
-        </Card>
-      ))}
+      {residents.length === 0 ? (
+        <SectionFooter>Inga boende tillagda ännu.</SectionFooter>
+      ) : (
+        <ListGroup>
+          {residents.map((r) => (
+            <ListRow
+              key={r.id}
+              title={
+                <span className="flex items-center gap-2">
+                  <span className="font-medium">{r.name}</span>
+                  {r.is_admin && <Pill tone="tint">Admin</Pill>}
+                </span>
+              }
+              subtitle={
+                <>
+                  {r.apartment ? `Lägenhet ${r.apartment.label}` : 'Ingen lägenhet'} · {r.email}
+                  {r.phone ? ` · ${r.phone}` : ''}
+                </>
+              }
+              chevron
+              onClick={() => setEditing(r)}
+            />
+          ))}
+        </ListGroup>
+      )}
     </div>
   )
 }
@@ -205,11 +202,8 @@ function ResidentEditor({
         apartment_id: form.apartment_id || null,
         is_admin: form.is_admin,
       }
-      if (resident) {
-        await adminApi.updateResident(resident.id, payload)
-      } else {
-        await adminApi.createResident(payload)
-      }
+      if (resident) await adminApi.updateResident(resident.id, payload)
+      else await adminApi.createResident(payload)
       await onSaved()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Något gick fel')
@@ -232,17 +226,12 @@ function ResidentEditor({
   }
 
   return (
-    <Card className="border-2 border-sky-200">
+    <Card>
       <form onSubmit={save} className="space-y-3">
-        <h2 className="text-xl font-bold">{resident ? 'Ändra boende' : 'Ny boende'}</h2>
+        <h2 className="text-[20px] font-bold">{resident ? 'Ändra boende' : 'Ny boende'}</h2>
         <div>
           <Label htmlFor="r-name">Namn</Label>
-          <Input
-            id="r-name"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
+          <Input id="r-name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div>
           <Label htmlFor="r-email">Mejladress</Label>
@@ -258,21 +247,11 @@ function ResidentEditor({
         </div>
         <div>
           <Label htmlFor="r-phone">Telefon (valfritt)</Label>
-          <Input
-            id="r-phone"
-            type="tel"
-            inputMode="tel"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          />
+          <Input id="r-phone" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
         </div>
         <div>
           <Label htmlFor="r-apartment">Lägenhet</Label>
-          <Select
-            id="r-apartment"
-            value={form.apartment_id}
-            onChange={(e) => setForm({ ...form, apartment_id: e.target.value })}
-          >
+          <Select id="r-apartment" value={form.apartment_id} onChange={(e) => setForm({ ...form, apartment_id: e.target.value })}>
             <option value="">Ingen lägenhet</option>
             {apartments.map((a) => (
               <option key={a.id} value={a.id}>
@@ -280,19 +259,13 @@ function ResidentEditor({
               </option>
             ))}
           </Select>
-          {apartments.length === 0 && (
-            <p className="mt-1 text-sm text-slate-500">Lägg till lägenheter under fliken Lägenheter.</p>
-          )}
+          {apartments.length === 0 && <p className="mt-1 text-[13px] text-ios-label-2">Lägg till lägenheter under fliken Lgh.</p>}
         </div>
-        <label className="flex min-h-12 items-center gap-3 text-lg">
-          <input
-            type="checkbox"
-            className="h-6 w-6"
-            checked={form.is_admin}
-            disabled={isMe}
-            onChange={(e) => setForm({ ...form, is_admin: e.target.checked })}
-          />
-          Admin (styrelsen)
+        <label className="flex min-h-12 items-center justify-between gap-3 text-[17px]">
+          <span>Admin (styrelsen)</span>
+          <span className={isMe ? 'opacity-50' : ''}>
+            <Switch checked={form.is_admin} onChange={() => !isMe && setForm({ ...form, is_admin: !form.is_admin })} label="Admin" />
+          </span>
         </label>
         <ErrorText>{error}</ErrorText>
         <Button type="submit" disabled={busy}>
@@ -301,23 +274,28 @@ function ResidentEditor({
         <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
           Avbryt
         </Button>
-        {resident && !isMe && !confirmDelete && (
-          <Button type="button" variant="ghost" className="text-red-600" onClick={() => setConfirmDelete(true)}>
+        {resident && !isMe && (
+          <Button type="button" variant="ghost" className="text-ios-red" onClick={() => setConfirmDelete(true)}>
             Radera boende
           </Button>
         )}
-        {resident && confirmDelete && (
-          <div className="rounded-xl bg-red-50 p-3">
-            <p className="mb-3 text-red-800">
-              Radera <strong>{resident.name}</strong>? Kontot och alla bokningar, meddelanden och
-              inställningar tas bort permanent.
-            </p>
-            <Button type="button" variant="danger" onClick={remove} disabled={busy}>
-              {busy ? 'Raderar…' : 'Ja, radera'}
+      </form>
+      {resident && (
+        <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)}>
+          <h2 className="text-[22px] font-bold">Radera {resident.name}?</h2>
+          <p className="mb-5 mt-1 text-[15px] text-ios-label-2">
+            Kontot och alla bokningar, meddelanden och inställningar tas bort permanent.
+          </p>
+          <div className="space-y-2">
+            <Button variant="danger" onClick={remove} disabled={busy}>
+              {busy ? 'Raderar…' : 'Radera'}
+            </Button>
+            <Button variant="secondary" onClick={() => setConfirmDelete(false)} disabled={busy}>
+              Avbryt
             </Button>
           </div>
-        )}
-      </form>
+        </Sheet>
+      )}
     </Card>
   )
 }
@@ -374,67 +352,62 @@ function ApartmentsAdmin({
     await onChanged()
   }
 
+  const editing = apartments.find((a) => a.id === editingId)
+  const editingCount = editing ? residents.filter((r) => r.apartment_id === editing.id).length : 0
+
   return (
     <div className="space-y-3">
       <Card>
         <form onSubmit={add} className="space-y-2">
           <Label htmlFor="a-label">Ny lägenhet (beteckning)</Label>
-          <Input
-            id="a-label"
-            required
-            maxLength={30}
-            placeholder="t.ex. 1101 eller Lgh 3"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-          <Button type="submit" disabled={busy || !label.trim()}>
+          <Input id="a-label" required maxLength={30} placeholder="t.ex. 1101 eller Lgh 3" value={label} onChange={(e) => setLabel(e.target.value)} />
+          <Button type="submit" variant="tinted" disabled={busy || !label.trim()}>
             Lägg till
           </Button>
         </form>
       </Card>
       <ErrorText>{error}</ErrorText>
-      <p className="text-sm text-slate-500">{apartments.length} lägenheter</p>
-      {apartments.map((a) => {
-        const count = residents.filter((r) => r.apartment_id === a.id).length
-        const editing = editingId === a.id
-        return (
-          <Card key={a.id}>
-            {editing ? (
-              <div className="space-y-2">
-                <Input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} maxLength={30} />
-                <Button onClick={() => rename(a.id)} disabled={busy || !editLabel.trim()}>
-                  Spara
-                </Button>
-                <Button variant="secondary" onClick={() => setEditingId(null)} disabled={busy}>
-                  Avbryt
-                </Button>
-                {count === 0 && (
-                  <Button variant="ghost" className="text-red-600" onClick={() => remove(a.id)} disabled={busy}>
-                    Ta bort lägenhet
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="flex w-full items-center justify-between text-left"
+      <SectionFooter>{apartments.length} lägenheter</SectionFooter>
+      {apartments.length > 0 && (
+        <ListGroup>
+          {apartments.map((a) => {
+            const count = residents.filter((r) => r.apartment_id === a.id).length
+            return (
+              <ListRow
+                key={a.id}
+                title={<span className="font-medium">{a.label}</span>}
+                trailing={count === 0 ? 'Inga boende' : count === 1 ? '1 boende' : `${count} boende`}
+                chevron
                 onClick={() => {
                   setEditingId(a.id)
                   setEditLabel(a.label)
                 }}
-              >
-                <div>
-                  <p className="text-lg font-semibold">{a.label}</p>
-                  <p className="text-sm text-slate-500">
-                    {count === 0 ? 'Inga boende' : count === 1 ? '1 boende' : `${count} boende`}
-                  </p>
-                </div>
-                <span className="text-slate-400">›</span>
-              </button>
+              />
+            )
+          })}
+        </ListGroup>
+      )}
+      <Sheet open={!!editing} onClose={() => setEditingId(null)}>
+        {editing && (
+          <div className="space-y-2">
+            <h2 className="mb-3 text-[22px] font-bold">Lägenhet {editing.label}</h2>
+            <Label htmlFor="a-edit">Beteckning</Label>
+            <Input id="a-edit" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} maxLength={30} />
+            <div className="pt-2" />
+            <Button onClick={() => rename(editing.id)} disabled={busy || !editLabel.trim()}>
+              Spara
+            </Button>
+            {editingCount === 0 && (
+              <Button variant="secondary" className="text-ios-red" onClick={() => remove(editing.id)} disabled={busy}>
+                Ta bort lägenhet
+              </Button>
             )}
-          </Card>
-        )
-      })}
+            <Button variant="ghost" onClick={() => setEditingId(null)} disabled={busy}>
+              Avbryt
+            </Button>
+          </div>
+        )}
+      </Sheet>
     </div>
   )
 }

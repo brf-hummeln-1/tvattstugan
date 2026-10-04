@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { bookingApi, useSchedule } from '../lib/bookings'
 import { SLOTS, formatDateLong, slotLabel, todayISO } from '../lib/time'
-import { Button, Card, ErrorText, Input, Label, Select, Spinner } from '../components/ui'
+import { Button, Card, ErrorText, Input, Label, ListGroup, ListRow, SectionFooter, SectionHeader, Select, Spinner } from '../components/ui'
+import { Sheet } from '../components/Sheet'
 
 export function AdminBlocks() {
   const today = todayISO()
@@ -47,11 +48,13 @@ export function AdminBlocks() {
     }
   }
 
+  const deleting = blocks.find((b) => b.id === confirmDeleteId)
+
   return (
-    <div className="space-y-3">
+    <div>
       <Card>
         <form onSubmit={create} className="space-y-3">
-          <h2 className="text-xl font-bold">Spärra pass</h2>
+          <h2 className="text-[20px] font-bold">Spärra pass</h2>
           <div>
             <Label htmlFor="b-start">Från datum</Label>
             <Input
@@ -83,19 +86,12 @@ export function AdminBlocks() {
           </div>
           <div>
             <Label htmlFor="b-reason">Anledning (visas för de boende)</Label>
-            <Input
-              id="b-reason"
-              required
-              maxLength={200}
-              placeholder="t.ex. Service av maskinerna"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
+            <Input id="b-reason" required maxLength={200} placeholder="t.ex. Service av maskinerna" value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           {affected > 0 && (
-            <p className="rounded-xl bg-amber-50 p-3 text-amber-900">
-              {affected === 1 ? '1 befintlig bokning' : `${affected} befintliga bokningar`} tas bort och de boende får
-              en notis med anledningen.
+            <p className="rounded-ios-sm bg-ios-orange-soft px-4 py-3 text-[15px]">
+              {affected === 1 ? '1 befintlig bokning' : `${affected} befintliga bokningar`} tas bort och de boende får en notis
+              med anledningen.
             </p>
           )}
           <ErrorText>{formError}</ErrorText>
@@ -106,38 +102,51 @@ export function AdminBlocks() {
       </Card>
 
       <ErrorText>{error}</ErrorText>
-      <h2 className="pt-2 text-lg font-bold">Aktuella spärrar</h2>
+      <SectionHeader>Aktuella spärrar</SectionHeader>
       {loading ? (
         <Spinner />
       ) : blocks.length === 0 ? (
-        <p className="text-slate-600">Inga spärrar framåt.</p>
+        <SectionFooter>Inga spärrar framåt.</SectionFooter>
       ) : (
-        blocks.map((b) => (
-          <Card key={b.id}>
-            <p className="text-lg font-semibold">
-              {b.start_date === b.end_date
-                ? capitalize(formatDateLong(b.start_date))
-                : `${capitalize(formatDateLong(b.start_date))} – ${formatDateLong(b.end_date)}`}
-            </p>
-            <p className="text-slate-700">{b.slot ? `Pass ${b.slot} (${slotLabel(b.slot)})` : 'Hela dagen'}</p>
-            <p className="text-slate-600">{b.reason}</p>
-            {confirmDeleteId === b.id ? (
-              <div className="mt-3 space-y-2">
-                <Button variant="danger" onClick={() => remove(b.id)} disabled={busy}>
-                  {busy ? 'Tar bort…' : 'Ja, ta bort spärren'}
-                </Button>
-                <Button variant="secondary" onClick={() => setConfirmDeleteId(null)} disabled={busy}>
-                  Avbryt
-                </Button>
-              </div>
-            ) : (
-              <Button variant="ghost" className="mt-2 text-red-600" onClick={() => setConfirmDeleteId(b.id)}>
-                Ta bort spärr
-              </Button>
-            )}
-          </Card>
-        ))
+        <ListGroup>
+          {blocks.map((b) => (
+            <ListRow
+              key={b.id}
+              title={
+                <span className="font-medium">
+                  {b.start_date === b.end_date
+                    ? capitalize(formatDateLong(b.start_date))
+                    : `${capitalize(formatDateLong(b.start_date))} – ${formatDateLong(b.end_date)}`}
+                </span>
+              }
+              subtitle={`${b.slot ? `Pass ${b.slot} (${slotLabel(b.slot)})` : 'Hela dagen'} · ${b.reason}`}
+              trailing={<span className="text-ios-red">Ta bort</span>}
+              onClick={() => setConfirmDeleteId(b.id)}
+            />
+          ))}
+        </ListGroup>
       )}
+
+      <Sheet open={!!deleting} onClose={() => setConfirmDeleteId(null)}>
+        {deleting && (
+          <>
+            <h2 className="text-[22px] font-bold">Ta bort spärren?</h2>
+            <p className="mb-5 mt-1 text-[15px] text-ios-label-2">
+              {capitalize(formatDateLong(deleting.start_date))}
+              {deleting.start_date !== deleting.end_date ? ` – ${formatDateLong(deleting.end_date)}` : ''},{' '}
+              {deleting.slot ? `pass ${deleting.slot}` : 'hela dagen'}. Passen blir bokningsbara igen.
+            </p>
+            <div className="space-y-2">
+              <Button variant="danger" onClick={() => remove(deleting.id)} disabled={busy}>
+                {busy ? 'Tar bort…' : 'Ta bort spärr'}
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmDeleteId(null)} disabled={busy}>
+                Avbryt
+              </Button>
+            </div>
+          </>
+        )}
+      </Sheet>
     </div>
   )
 }

@@ -1,59 +1,79 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { Button, Card, PageTitle } from '../components/ui'
+import { Button, Card, ListGroup, ListRow, PageTitle, SectionHeader } from '../components/ui'
 import { InstallGuide } from '../components/InstallGuide'
 import { NotificationSettings } from '../components/NotificationSettings'
 
 export function More() {
   const { resident, session, signOut } = useAuth()
+  const navigate = useNavigate()
   const [showGuide, setShowGuide] = useState(false)
+  const name = resident?.name ?? session?.user.email ?? ''
+  const initials = name
+    .split(/\s+/)
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
+    <div className="mx-auto max-w-md">
       <PageTitle>Mer</PageTitle>
 
-      <Card>
-        <p className="text-lg font-semibold">{resident?.name ?? session?.user.email}</p>
-        <p className="text-slate-600">
-          {resident?.apartment ? `Lägenhet ${resident.apartment.label}` : 'Ingen lägenhet kopplad ännu'}
-        </p>
-        <p className="text-slate-600">{resident?.email ?? session?.user.email}</p>
-      </Card>
+      <ListGroup>
+        <ListRow
+          leading={
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-ios-tint text-[18px] font-semibold text-white">
+              {initials || '?'}
+            </span>
+          }
+          title={<span className="font-semibold">{name}</span>}
+          subtitle={
+            <>
+              {resident?.apartment ? `Lägenhet ${resident.apartment.label}` : 'Ingen lägenhet kopplad ännu'}
+              <br />
+              {resident?.email ?? session?.user.email}
+            </>
+          }
+        />
+      </ListGroup>
 
       {resident?.is_admin && (
-        <Link to="/admin" className="block">
-          <Card className="flex items-center justify-between">
-            <span className="text-lg font-semibold">Admin</span>
-            <span className="text-slate-400">›</span>
-          </Card>
-        </Link>
+        <>
+          <SectionHeader>Styrelsen</SectionHeader>
+          <ListGroup>
+            <ListRow title="Admin" subtitle="Boende, lägenheter, spärrar" chevron onClick={() => navigate('/admin')} />
+          </ListGroup>
+        </>
       )}
 
+      <SectionHeader>Notiser</SectionHeader>
       <Card>
-        <h2 className="mb-2 text-lg font-semibold">Notiser</h2>
         <NotificationSettings />
       </Card>
 
-      <Card>
-        <button
-          type="button"
+      <SectionHeader>Appen</SectionHeader>
+      <ListGroup>
+        <ListRow
+          title="Lägg appen på hemskärmen"
+          chevron={!showGuide}
+          trailing={showGuide ? 'Dölj' : undefined}
           onClick={() => setShowGuide((v) => !v)}
-          className="flex w-full items-center justify-between py-1 text-left text-lg font-semibold"
-        >
-          Lägg appen på hemskärmen
-          <span className="text-slate-400">{showGuide ? '▴' : '▾'}</span>
-        </button>
+        />
         {showGuide && (
-          <div className="mt-3">
+          <div className="px-4 pb-4 pt-3">
             <InstallGuide />
           </div>
         )}
-      </Card>
+      </ListGroup>
 
-      <Button variant="secondary" onClick={signOut}>
-        Logga ut
-      </Button>
+      <div className="mt-6">
+        <Button variant="secondary" className="text-ios-red" onClick={signOut}>
+          Logga ut
+        </Button>
+      </div>
     </div>
   )
 }

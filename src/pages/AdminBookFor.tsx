@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Apartment } from '../lib/types'
-import { Card, Label, Select } from '../components/ui'
+import { Card, Label, SectionFooter, Select } from '../components/ui'
 import { Book } from './Book'
 
 /** Admin bokar och avbokar åt en vald lägenhet. */
@@ -20,10 +20,8 @@ export function AdminBookFor({ apartments }: { apartments: Apartment[] }) {
             </option>
           ))}
         </Select>
-        <p className="mt-2 text-sm text-slate-500">
-          Här kan du boka och avboka åt en lägenhet. Samma regler gäller som när de bokar själva.
-        </p>
       </Card>
+      <SectionFooter>Här kan du boka och avboka åt en lägenhet. Samma regler gäller som när de bokar själva.</SectionFooter>
       {apartment && <Book key={apartment.id} adminFor={apartment} />}
     </div>
   )
