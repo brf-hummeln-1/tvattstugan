@@ -70,6 +70,7 @@ Schemat finns i `supabase/migrations/`, så det räcker att spara datan. Återst
 
 ```bash
 SUPABASE_SERVICE_ROLE_KEY=... node scripts/test-bookings.mjs
+SUPABASE_SERVICE_ROLE_KEY=... node scripts/test-chat.mjs
 ```
 
 Service role key kan hämtas med `npx supabase projects api-keys --project-ref sbnafogvwkxaqrjzmzhe` och ska aldrig sparas i en fil.

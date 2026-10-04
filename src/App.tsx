@@ -10,7 +10,7 @@ import { Admin } from './pages/Admin'
 import { Book } from './pages/Book'
 import { MyBooking } from './pages/MyBooking'
 import { Info } from './pages/Info'
-import { Placeholder } from './pages/Placeholder'
+import { Chat } from './pages/Chat'
 
 function Protected() {
   const { session, loading } = useAuth()
@@ -26,7 +26,7 @@ function Protected() {
       <Route element={<Layout />}>
         <Route index element={<Book />} />
         <Route path="/min-bokning" element={<MyBooking />} />
-        <Route path="/chatt" element={<Placeholder title="Chatt" />} />
+        <Route path="/chatt" element={<Chat />} />
         <Route path="/info" element={<Info />} />
         <Route path="/mer" element={<More />} />
         <Route path="/admin" element={<Admin />} />
