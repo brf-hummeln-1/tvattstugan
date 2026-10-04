@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import { adminApi } from '../lib/admin'
 import type { Apartment, ResidentWithApartment } from '../lib/types'
 import { Button, Card, ErrorText, Input, Label, PageTitle, Select, Spinner } from '../components/ui'
+import { AdminBlocks } from './AdminBlocks'
 
 type ResidentForm = {
   name: string
@@ -22,7 +23,7 @@ export function Admin() {
   const [residents, setResidents] = useState<ResidentWithApartment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'residents' | 'apartments'>('residents')
+  const [tab, setTab] = useState<'residents' | 'apartments' | 'blocks'>('residents')
 
   const load = useCallback(async () => {
     const [a, r] = await Promise.all([
@@ -59,7 +60,7 @@ export function Admin() {
       <PageTitle>Admin</PageTitle>
 
       <div className="mb-4 flex rounded-xl bg-slate-200 p-1">
-        {(['residents', 'apartments'] as const).map((t) => (
+        {(['residents', 'apartments', 'blocks'] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -68,7 +69,7 @@ export function Admin() {
               tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
             }`}
           >
-            {t === 'residents' ? 'Boende' : 'Lägenheter'}
+            {t === 'residents' ? 'Boende' : t === 'apartments' ? 'Lägenheter' : 'Spärrar'}
           </button>
         ))}
       </div>
@@ -86,8 +87,10 @@ export function Admin() {
             await refreshResident()
           }}
         />
-      ) : (
+      ) : tab === 'apartments' ? (
         <ApartmentsAdmin apartments={apartments} residents={residents} onChanged={load} />
+      ) : (
+        <AdminBlocks />
       )}
     </div>
   )

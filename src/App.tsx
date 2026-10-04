@@ -7,6 +7,9 @@ import { Login } from './pages/Login'
 import { GetStarted } from './pages/GetStarted'
 import { More } from './pages/More'
 import { Admin } from './pages/Admin'
+import { Book } from './pages/Book'
+import { MyBooking } from './pages/MyBooking'
+import { Info } from './pages/Info'
 import { Placeholder } from './pages/Placeholder'
 
 function Protected() {
@@ -21,10 +24,10 @@ function Protected() {
     <Routes>
       <Route path="/kom-igang" element={<GetStarted />} />
       <Route element={<Layout />}>
-        <Route index element={<Placeholder title="Boka" />} />
-        <Route path="/min-bokning" element={<Placeholder title="Min bokning" />} />
+        <Route index element={<Book />} />
+        <Route path="/min-bokning" element={<MyBooking />} />
         <Route path="/chatt" element={<Placeholder title="Chatt" />} />
-        <Route path="/info" element={<Placeholder title="Info" />} />
+        <Route path="/info" element={<Info />} />
         <Route path="/mer" element={<More />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
