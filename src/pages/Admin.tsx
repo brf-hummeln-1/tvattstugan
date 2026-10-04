@@ -6,6 +6,7 @@ import { adminApi } from '../lib/admin'
 import type { Apartment, ResidentWithApartment } from '../lib/types'
 import { Button, Card, ErrorText, Input, Label, PageTitle, Select, Spinner } from '../components/ui'
 import { AdminBlocks } from './AdminBlocks'
+import { AdminBookFor } from './AdminBookFor'
 
 type ResidentForm = {
   name: string
@@ -23,7 +24,7 @@ export function Admin() {
   const [residents, setResidents] = useState<ResidentWithApartment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'residents' | 'apartments' | 'blocks'>('residents')
+  const [tab, setTab] = useState<'residents' | 'apartments' | 'blocks' | 'bookfor'>('residents')
 
   const load = useCallback(async () => {
     const [a, r] = await Promise.all([
@@ -60,16 +61,23 @@ export function Admin() {
       <PageTitle>Admin</PageTitle>
 
       <div className="mb-4 flex rounded-xl bg-slate-200 p-1">
-        {(['residents', 'apartments', 'blocks'] as const).map((t) => (
+        {(
+          [
+            ['residents', 'Boende'],
+            ['apartments', 'Lgh'],
+            ['blocks', 'Spärrar'],
+            ['bookfor', 'Boka åt'],
+          ] as const
+        ).map(([t, label]) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`min-h-12 flex-1 rounded-lg text-base font-semibold ${
+            className={`min-h-12 flex-1 rounded-lg text-sm font-semibold ${
               tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
             }`}
           >
-            {t === 'residents' ? 'Boende' : t === 'apartments' ? 'Lägenheter' : 'Spärrar'}
+            {label}
           </button>
         ))}
       </div>
@@ -89,8 +97,10 @@ export function Admin() {
         />
       ) : tab === 'apartments' ? (
         <ApartmentsAdmin apartments={apartments} residents={residents} onChanged={load} />
-      ) : (
+      ) : tab === 'blocks' ? (
         <AdminBlocks />
+      ) : (
+        <AdminBookFor apartments={apartments} />
       )}
     </div>
   )

@@ -1,22 +1,26 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { supabase } from '../lib/supabase'
 import { activeBookingFor, bookingApi, findBlock, useSchedule, type Block, type Booking } from '../lib/bookings'
 import { SLOTS, addDays, addOneMonth, daysBetween, formatDayHeading, slotHasEnded, slotIsOngoing, slotLabel, todayISO } from '../lib/time'
 import type { Apartment } from '../lib/types'
-import { Button, Card, ErrorText, Label, PageTitle, Select, Spinner } from '../components/ui'
+import { Button, Card, ErrorText, PageTitle, Spinner } from '../components/ui'
 import { Sheet } from '../components/Sheet'
 
 type Selection = { date: string; slot: number; booking?: Booking; block?: Block }
 
 const DAYS_PER_PAGE = 7
 
-export function Book() {
+/**
+ * Bokningsschemat. Utan `adminFor` bokar man för sin egen lägenhet.
+ * Med `adminFor` (bara från Admin-menyn) bokar och avbokar admin åt den lägenheten.
+ */
+export function Book({ adminFor }: { adminFor?: Pick<Apartment, 'id' | 'label'> } = {}) {
   const { resident } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const moveBookingId = (location.state as { moveBookingId?: string } | null)?.moveBookingId
+  const adminMode = !!adminFor
+  const moveBookingId = adminMode ? undefined : (location.state as { moveBookingId?: string } | null)?.moveBookingId
 
   // Tick varje minut så att "passerat"/"pågår" uppdateras.
   const [now, setNow] = useState(() => new Date())
@@ -31,8 +35,8 @@ export function Book() {
   const [visibleDays, setVisibleDays] = useState(DAYS_PER_PAGE)
 
   const { bookings, blocks, loading, error, reload } = useSchedule(today)
-  const myApartmentId = resident?.apartment_id ?? null
-  const activeBooking = activeBookingFor(bookings, myApartmentId)
+  const apartmentId = adminFor?.id ?? resident?.apartment_id ?? null
+  const activeBooking = activeBookingFor(bookings, apartmentId)
   const moveBooking = moveBookingId ? bookings.find((b) => b.id === moveBookingId) : undefined
 
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -45,9 +49,13 @@ export function Book() {
 
   return (
     <div className="mx-auto max-w-md">
-      <PageTitle>Boka tvättid</PageTitle>
+      {adminMode ? (
+        <h2 className="mb-3 text-xl font-bold">Boka åt lägenhet {adminFor.label}</h2>
+      ) : (
+        <PageTitle>Boka tvättid</PageTitle>
+      )}
 
-      {resident && !resident.apartment_id && !resident.is_admin && (
+      {!adminMode && resident && !resident.apartment_id && (
         <Card className="mb-4 bg-amber-50">
           <p className="text-amber-900">
             Du är inte kopplad till någon lägenhet ännu, så du kan inte boka. Kontakta styrelsen.
@@ -69,7 +77,7 @@ export function Book() {
         </Card>
       )}
 
-      {!moveBookingId && activeBooking && (
+      {!moveBookingId && activeBooking && !adminMode && (
         <Link to="/min-bokning" className="block">
           <Card className="mb-4 bg-sky-50">
             <p className="text-sm font-medium text-sky-700">Din bokade tid</p>
@@ -79,6 +87,18 @@ export function Book() {
             <p className="text-sm text-sky-800">Tryck för att avboka eller flytta</p>
           </Card>
         </Link>
+      )}
+
+      {activeBooking && adminMode && (
+        <Card className="mb-4 bg-sky-50">
+          <p className="text-sm font-medium text-sky-700">Lägenhetens bokade tid</p>
+          <p className="text-lg font-bold text-sky-900">
+            {formatDayHeading(activeBooking.date, now)} {slotLabel(activeBooking.slot)}
+          </p>
+          <p className="text-sm text-sky-800">
+            Bokad av {activeBooking.resident?.name ?? 'okänd'}. Tryck på passet i listan för att avboka.
+          </p>
+        </Card>
       )}
 
       <ErrorText>{error}</ErrorText>
@@ -93,18 +113,16 @@ export function Book() {
                 {SLOTS.map((s) => {
                   const booking = bookings.find((b) => b.date === date && b.slot === s.slot)
                   const block = findBlock(blocks, date, s.slot)
-                  const ended = slotHasEnded(date, s.slot, now)
-                  const ongoing = slotIsOngoing(date, s.slot, now)
                   return (
                     <SlotRow
                       key={s.slot}
                       label={s.label}
                       booking={booking}
                       block={block}
-                      ended={ended}
-                      ongoing={ongoing}
-                      isMine={!!booking && booking.apartment_id === myApartmentId}
-                      isAdmin={!!resident?.is_admin}
+                      ended={slotHasEnded(date, s.slot, now)}
+                      ongoing={slotIsOngoing(date, s.slot, now)}
+                      isMine={!!booking && booking.apartment_id === apartmentId}
+                      adminMode={adminMode}
                       onSelect={() => setSelection({ date, slot: s.slot, booking, block })}
                     />
                   )
@@ -131,14 +149,14 @@ export function Book() {
         onClose={() => setSelection(null)}
         activeBooking={activeBooking}
         moveBooking={moveBooking}
-        isAdmin={!!resident?.is_admin}
-        myApartmentId={myApartmentId}
+        adminFor={adminFor}
+        apartmentId={apartmentId}
         now={now}
         onDone={async (goToMyBooking) => {
           setSelection(null)
           await reload()
           if (moveBookingId) exitMoveMode()
-          if (goToMyBooking) navigate('/min-bokning')
+          if (goToMyBooking && !adminMode) navigate('/min-bokning')
         }}
       />
     </div>
@@ -152,7 +170,7 @@ function SlotRow({
   ended,
   ongoing,
   isMine,
-  isAdmin,
+  adminMode,
   onSelect,
 }: {
   label: string
@@ -161,7 +179,7 @@ function SlotRow({
   ended: boolean
   ongoing: boolean
   isMine: boolean
-  isAdmin: boolean
+  adminMode: boolean
   onSelect: () => void
 }) {
   const base = 'flex min-h-16 w-full items-center justify-between rounded-xl px-4 text-left'
@@ -187,13 +205,14 @@ function SlotRow({
     )
   }
   if (booking) {
-    const clickable = isMine || isAdmin
+    // I vanliga vyn kan man bara trycka på sin egen bokning. I admin-läget på alla.
+    const clickable = isMine || adminMode
     const content = (
       <>
         <span className="text-lg font-semibold">{label}</span>
         <span className="text-right">
           {isMine ? (
-            <span className="font-semibold">Din bokning</span>
+            <span className="font-semibold">{adminMode ? 'Lägenhetens bokning' : 'Din bokning'}</span>
           ) : (
             <>
               <span className="font-semibold">Bokad</span>
@@ -233,8 +252,8 @@ function SlotSheet({
   onClose,
   activeBooking,
   moveBooking,
-  isAdmin,
-  myApartmentId,
+  adminFor,
+  apartmentId,
   now,
   onDone,
 }: {
@@ -242,33 +261,21 @@ function SlotSheet({
   onClose: () => void
   activeBooking?: Booking
   moveBooking?: Booking
-  isAdmin: boolean
-  myApartmentId: string | null
+  adminFor?: Pick<Apartment, 'id' | 'label'>
+  apartmentId: string | null
   now: Date
   onDone: (goToMyBooking: boolean) => Promise<void>
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [apartments, setApartments] = useState<Apartment[]>([])
-  const [forApartment, setForApartment] = useState<string>(myApartmentId ?? '')
-
-  // Panelen får ny key per valt pass, så state nollställs automatiskt.
-  useEffect(() => {
-    if (selection && isAdmin && !selection.booking) {
-      supabase
-        .from('apartments')
-        .select('*')
-        .order('label')
-        .then(({ data }) => setApartments((data as Apartment[]) ?? []))
-    }
-  }, [selection, isAdmin])
 
   if (!selection) return null
   const { date, slot, booking } = selection
   const title = `${formatDayHeading(date, now)} ${slotLabel(slot)}`
-  const bookingForOther = isAdmin && forApartment !== myApartmentId
+  const adminMode = !!adminFor
+  const whose = adminMode ? `lägenhet ${adminFor.label}` : 'din lägenhet'
 
-  async function run(fn: () => Promise<void>, goToMyBooking = false) {
+  async function run(fn: () => Promise<unknown>, goToMyBooking = false) {
     setBusy(true)
     setError(null)
     try {
@@ -281,15 +288,17 @@ function SlotSheet({
     }
   }
 
-  // Befintlig bokning (egen eller admin)
+  // Befintlig bokning
   if (booking) {
-    const mine = booking.apartment_id === myApartmentId
+    const mine = booking.apartment_id === apartmentId
     return (
       <Sheet open onClose={onClose}>
         <h2 className="text-xl font-bold">{title}</h2>
         <p className="mb-4 text-slate-600">
-          {mine ? 'Din lägenhets bokning' : `Bokad av ${booking.resident?.name ?? 'okänd'}${booking.apartment ? `, lgh ${booking.apartment.label}` : ''}`}
-          {!mine && isAdmin && ' (du är admin)'}
+          {mine && !adminMode
+            ? 'Din lägenhets bokning'
+            : `Bokad av ${booking.resident?.name ?? 'okänd'}${booking.apartment ? `, lgh ${booking.apartment.label}` : ''}`}
+          {adminMode && ' (du avbokar som admin)'}
         </p>
         <ErrorText>{error}</ErrorText>
         <div className="mt-3 space-y-2">
@@ -304,7 +313,7 @@ function SlotSheet({
     )
   }
 
-  // Flyttläge
+  // Flyttläge (bara i vanliga vyn)
   if (moveBooking) {
     return (
       <Sheet open onClose={onClose}>
@@ -315,7 +324,7 @@ function SlotSheet({
         </p>
         <ErrorText>{error}</ErrorText>
         <div className="mt-3 space-y-2">
-          <Button disabled={busy} onClick={() => run(() => bookingApi.move(moveBooking.id, date, slot).then(() => {}), true)}>
+          <Button disabled={busy} onClick={() => run(() => bookingApi.move(moveBooking.id, date, slot), true)}>
             {busy ? 'Flyttar…' : 'Flytta bokningen'}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
@@ -326,19 +335,19 @@ function SlotSheet({
     )
   }
 
-  // Lägenheten har redan en aktiv bokning: erbjud flytt (om det är den egna lägenheten som bokar)
-  if (activeBooking && !bookingForOther) {
+  // Lägenheten har redan en aktiv bokning: erbjud flytt
+  if (activeBooking) {
     return (
       <Sheet open onClose={onClose}>
         <h2 className="text-xl font-bold">{title}</h2>
         <p className="mb-4 text-slate-600">
-          Din lägenhet har redan en bokad tid: {formatDayHeading(activeBooking.date, now).toLowerCase()}{' '}
+          {capitalize(whose)} har redan en bokad tid: {formatDayHeading(activeBooking.date, now).toLowerCase()}{' '}
           {slotLabel(activeBooking.slot)}. Varje lägenhet kan bara ha en tid åt gången. Vill du flytta den hit istället?
         </p>
         <ErrorText>{error}</ErrorText>
         <div className="mt-3 space-y-2">
-          <Button disabled={busy} onClick={() => run(() => bookingApi.move(activeBooking.id, date, slot).then(() => {}), true)}>
-            {busy ? 'Flyttar…' : 'Flytta min bokning hit'}
+          <Button disabled={busy} onClick={() => run(() => bookingApi.move(activeBooking.id, date, slot), true)}>
+            {busy ? 'Flyttar…' : 'Flytta bokningen hit'}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
             Avbryt
@@ -352,27 +361,14 @@ function SlotSheet({
   return (
     <Sheet open onClose={onClose}>
       <h2 className="text-xl font-bold">{title}</h2>
-      <p className="mb-4 text-slate-600">Vill du boka det här passet?</p>
-      {isAdmin && (
-        <div className="mb-4">
-          <Label htmlFor="for-apartment">Boka för lägenhet</Label>
-          <Select id="for-apartment" value={forApartment} onChange={(e) => setForApartment(e.target.value)}>
-            {!myApartmentId && <option value="">Välj lägenhet</option>}
-            {apartments.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.id === myApartmentId ? `${a.label} (min)` : a.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-      )}
+      <p className="mb-4 text-slate-600">
+        {adminMode ? `Boka det här passet åt lägenhet ${adminFor.label}?` : 'Vill du boka det här passet?'}
+      </p>
       <ErrorText>{error}</ErrorText>
       <div className="mt-3 space-y-2">
         <Button
-          disabled={busy || (isAdmin && !forApartment)}
-          onClick={() =>
-            run(() => bookingApi.book(date, slot, isAdmin ? forApartment : undefined).then(() => {}), !bookingForOther)
-          }
+          disabled={busy || !apartmentId}
+          onClick={() => run(() => bookingApi.book(date, slot, adminMode ? adminFor.id : undefined), true)}
         >
           {busy ? 'Bokar…' : 'Boka'}
         </Button>
@@ -382,4 +378,8 @@ function SlotSheet({
       </div>
     </Sheet>
   )
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }

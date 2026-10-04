@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { Button, Card, PageTitle } from '../components/ui'
 import { InstallGuide } from '../components/InstallGuide'
+import { NotificationSettings } from '../components/NotificationSettings'
 
 export function More() {
   const { resident, session, signOut } = useAuth()
@@ -28,6 +29,11 @@ export function More() {
           </Card>
         </Link>
       )}
+
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold">Notiser</h2>
+        <NotificationSettings />
+      </Card>
 
       <Card>
         <button
